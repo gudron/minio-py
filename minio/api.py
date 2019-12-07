@@ -582,6 +582,45 @@ class Minio(object):
                 response.close()
                 continue
 
+
+    def get_users():
+        method = 'GET'
+        url = self._endpoint_url + '/minio/admin/v2/list-users'
+        # Set user agent once before the request.
+        headers = {'User-Agent': self._user_agent}
+
+        # default for all requests.
+        region = 'us-east-1'
+        # region is set then use the region.
+        if self._region:
+            region = self._region
+
+        # Get signature headers if any.
+        headers = sign_v4(method, url, region,
+                          headers, self._access_key,
+                          self._secret_key,
+                          self._session_token,
+                          None, datetime.utcnow())
+
+        response = self._http.urlopen(method, url,
+                                      body=None,
+                                      headers=headers)
+
+        if self._trace_output_stream:
+            dump_http(method, url, headers, response,
+                      self._trace_output_stream)
+
+        if response.status != 200:
+            raise ResponseError(response, method).get_exception()
+        try:
+            return parse_list_buckets(response.data)
+        except InvalidXMLError:
+            if self._endpoint_url.endswith("s3.amazonaws.com") and (not self._access_key or not self._secret_key):
+                raise AccessDenied(response)
+
+    def user_exists(user_name):
+        return True
+
     def fput_object(self, bucket_name, object_name, file_path,
                     content_type='application/octet-stream',
                     metadata=None, sse=None, progress=None,
